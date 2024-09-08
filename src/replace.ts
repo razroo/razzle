@@ -21,27 +21,39 @@ export const parseEJSCode = (
   return ejs.render(toReplace, parameters)
 }
 
-export const replaceCurlyBrace = (mockParameters: Record<string, string>, mockFileStringWithCurlyBrace: string, useKebabCase?: boolean): string => {
+export const replaceCurlyBrace = (mockParameters: Record<string, any>, mockFileStringWithCurlyBrace: string, useKebabCase?: boolean): string => {
   let result = mockFileStringWithCurlyBrace;
-  for(const key in mockParameters) {
-    // only use kebab case if non file path
+  const processValue = (value: any, useKebabCase: boolean): string => {
+    if (value === null || value === undefined) return 'null';
+    if (typeof value === 'string') {
+      if (useKebabCase && !value.includes('/')) {
+        return kebabCase(value);
+      }
+      return value;
+    }
+    return String(value);
+  };
+
+  for (const key in mockParameters) {
     const value = mockParameters[key];
-    const isString = typeof value === 'string';
-    const valueToReplaceWith = useKebabCase && isString && value.split('/').length < 2 ? kebabCase(value) : value;
-    result = result.replace(new RegExp(`{${key}}`, 'g'), valueToReplaceWith);
+    const processedValue = processValue(value, useKebabCase || false);
+    result = result.replace(new RegExp(`{${key}}`, 'g'), processedValue);
   }
-  const hasCurlyBrace = /{.*}/;
-  if (hasCurlyBrace.test(result)) {
-    for(const key in mockParameters) {
-      // only use kebab case if non file path
+
+  // Handle nested curly braces
+  while (/{.*}/.test(result)) {
+    for (const key in mockParameters) {
       const value = mockParameters[key];
-      const isString = typeof value === 'string';
-      const valueToReplaceWith = useKebabCase && isString && value.split('/').length < 2 ? kebabCase(value) : value;
-      result = result.replace(new RegExp(`{${key}}`, 'g'), valueToReplaceWith);
+      const processedValue = processValue(value, useKebabCase || false);
+      result = result.replace(new RegExp(`{${key}}`, 'g'), processedValue);
     }
   }
+
+  // Remove leading forward slash if present
+  result = result.replace(/^\//, '');
+
+  // Remove any remaining empty path segments
+  result = result.replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+
   return result;
 }
-
-
-
