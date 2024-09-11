@@ -41,12 +41,14 @@ export const replaceCurlyBrace = (mockParameters: Record<string, any>, mockFileS
   }
 
   // Handle nested curly braces
-  while (/{.*}/.test(result)) {
+  let iterations = 0;
+  while (/{.*}/.test(result) && iterations < 3) {
     for (const key in mockParameters) {
       const value = mockParameters[key];
       const processedValue = processValue(value, useKebabCase || false);
       result = result.replace(new RegExp(`{${key}}`, 'g'), processedValue);
     }
+    iterations++;
   }
 
   // Remove leading forward slash if present
